@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bunk-yellow: #F4C21A;
+  --color-bunk-card: #0A0A0A;
+  --color-bunk-pink: #FF4FA3;
+  --color-bunk-green: #22C55E;
+  --color-bunk-warning: #F59E0B;
+  --color-bunk-danger: #EF4444;
+  
+  --font-sans: var(--font-space-grotesk), sans-serif;
+  --font-headline: var(--font-bricolage), sans-serif;
+}
+
+:root {
+  --background: #F4C21A;
+  --foreground: #0A0A0A;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* Custom Neo-Brutalist elements */
+.neo-border {
+  border: 3px solid #000000;
+}
+
+.neo-border-sm {
+  border: 2px solid #000000;
+}
+
+.neo-shadow {
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+.neo-shadow-lg {
+  box-shadow: 8px 8px 0px 0px #000000;
+}
+
+.neo-shadow-sm {
+  box-shadow: 2px 2px 0px 0px #000000;
+}
+
+.neo-shadow-pink {
+  box-shadow: 4px 4px 0px 0px #FF4FA3;
+}
+
+.neo-shadow-green {
+  box-shadow: 4px 4px 0px 0px #22C55E;
+}
+
+/* Clickable Neo-Brutalist button with press animation */
+.neo-btn {
+  border: 3px solid #000000;
+  box-shadow: 4px 4px 0px 0px #000000;
+  transition: all 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+}
+
+.neo-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0px 0px #000000;
+}
+
+.neo-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px 0px #000000;
+}
+
+/* Input boxes */
+.neo-input {
+  border: 3px solid #000000;
+  box-shadow: 3px 3px 0px 0px #000000;
+  outline: none;
+  transition: all 0.1s ease;
+}
+
+.neo-input:focus {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+/* Neo-Brutalist card layout */
+.neo-card {
+  border: 3px solid #000000;
+  box-shadow: 5px 5px 0px 0px #000000;
+  background-color: #0A0A0A;
+  color: #FFFFFF;
+}
+
+/* Mascot Speech Bubble */
+.speech-bubble {
+  position: relative;
+  background: #0A0A0A;
+  border: 3px solid #000000;
+  border-radius: 16px;
+  padding: 16px;
+  color: #FFFFFF;
+  box-shadow: 4px 4px 0px 0px #000000;
+}
+
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 24px;
+  border-width: 15px 15px 0;
+  border-style: solid;
+  border-color: #0A0A0A transparent;
+  display: block;
+  width: 0;
+}
+
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -19px;
+  left: 22px;
+  border-width: 17px 17px 0;
+  border-style: solid;
+  border-color: #000000 transparent;
+  display: block;
+  width: 0;
+  z-index: -1;
+}
+
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s ease-in-out infinite;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+  border-left: 3px solid #000000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #F4C21A;
+  border: 3px solid #000000;
+  border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #FF4FA3;
+}
