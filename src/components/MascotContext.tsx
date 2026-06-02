@@ -27,9 +27,11 @@ export const MascotProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Fetch an initial welcome roast on first boot
     const currentUser = dbService.getCurrentUser();
     if (currentUser) {
-      dbService.getRandomDialogue("ROAST").then((d) => {
-        setDialogue(d);
-      });
+      dbService.getRandomDialogue("ROAST")
+        .then((d) => {
+          setDialogue(d);
+        })
+        .catch((e) => console.warn("Could not load initial dialogue:", e));
     }
   }, []);
 

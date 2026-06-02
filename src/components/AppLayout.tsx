@@ -29,9 +29,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       setUser(currentUser);
       // Hydrate mascot speech bubble if currently empty
       if (!dialogue) {
-        dbService.getRandomDialogue("ROAST").then((d) => {
-          setDialogue(d);
-        });
+        dbService.getRandomDialogue("ROAST")
+          .then((d) => {
+            setDialogue(d);
+          })
+          .catch((e) => console.warn("Could not load dialogue in AppLayout:", e));
       }
     }
     setLoading(false);

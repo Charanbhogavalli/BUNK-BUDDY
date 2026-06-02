@@ -164,25 +164,39 @@ const LOCAL_SESSION_DATA_KEY = "bunk_current_user_session_data";
 
 const getSessionUser = (): User | null => {
   if (typeof window === "undefined") return null;
-  const item = localStorage.getItem(LOCAL_SESSION_DATA_KEY);
-  return item ? JSON.parse(item) : null;
+  try {
+    const item = localStorage.getItem(LOCAL_SESSION_DATA_KEY);
+    return item ? JSON.parse(item) : null;
+  } catch (e) {
+    console.warn("Unable to access localStorage for session user:", e);
+    return null;
+  }
 };
 
 const setSessionUser = (u: User | null, uid: string | null) => {
   if (typeof window !== "undefined") {
-    if (u && uid) {
-      localStorage.setItem(LOCAL_SESSION_KEY, uid);
-      localStorage.setItem(LOCAL_SESSION_DATA_KEY, JSON.stringify(u));
-    } else {
-      localStorage.removeItem(LOCAL_SESSION_KEY);
-      localStorage.removeItem(LOCAL_SESSION_DATA_KEY);
+    try {
+      if (u && uid) {
+        localStorage.setItem(LOCAL_SESSION_KEY, uid);
+        localStorage.setItem(LOCAL_SESSION_DATA_KEY, JSON.stringify(u));
+      } else {
+        localStorage.removeItem(LOCAL_SESSION_KEY);
+        localStorage.removeItem(LOCAL_SESSION_DATA_KEY);
+      }
+    } catch (e) {
+      console.warn("Unable to write to localStorage for session user:", e);
     }
   }
 };
 
 const getSessionUid = (): string | null => {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(LOCAL_SESSION_KEY);
+  try {
+    return localStorage.getItem(LOCAL_SESSION_KEY);
+  } catch (e) {
+    console.warn("Unable to access localStorage for session UID:", e);
+    return null;
+  }
 };
 
 const ensureFirestore = () => {
@@ -632,19 +646,59 @@ export const dbService = {
   },
 
   async getRandomDialogue(category: Dialogue["category"]): Promise<Dialogue> {
-    ensureFirestore();
-    
-    // Fetch all dialogues (warmed via in-memory cache)
-    const allDialogues = await this.getDialogues();
-    
-    // Filter active matching dialogues in-memory (0ms query latency!)
-    let dialogues = allDialogues.filter((d) => d.category === category && d.active);
+    try {
+      ensureFirestore();
+      
+      // Fetch all dialogues (warmed via in-memory cache)
+      const allDialogues = await this.getDialogues();
+      
+      // Filter active matching dialogues in-memory (0ms query latency!)
+      let dialogues = allDialogues.filter((d) => d.category === category && d.active);
 
-    if (dialogues.length === 0) {
-      dialogues = DEFAULT_DIALOGUES.filter((d) => d.category === category && d.active);
-    }
+      if (dialogues.length === 0) {
+        dialogues = DEFAULT_DIALOGUES.filter((d) => d.category === category && d.active);
+      }
 
-    if (dialogues.length === 0) {
+      if (dialogues.length === 0) {
+        return {
+          dialogueId: "fallback",
+          category,
+          text: `Logged a ${category.toLowerCase()} event. Stay casual.`,
+          rarity: "common",
+          active: true,
+          createdAt: new Date().toISOString(),
+        };
+      }
+
+      const rand = Math.random() * 100;
+      let targetRarity: Dialogue["rarity"] = "common";
+      if (rand < 1) {
+        targetRarity = "legendary";
+      } else if (rand < 11) {
+        targetRarity = "rare";
+      }
+
+      let matched = dialogues.filter((d) => d.rarity === targetRarity);
+      if (matched.length === 0 && targetRarity === "legendary") {
+        targetRarity = "rare";
+        matched = dialogues.filter((d) => d.rarity === "rare");
+      }
+      if (matched.length === 0) {
+        matched = dialogues.filter((d) => d.rarity === "common");
+      }
+      if (matched.length === 0) {
+        matched = dialogues;
+      }
+
+      const randomIndex = Math.floor(Math.random() * matched.length);
+      return matched[randomIndex];
+    } catch (e) {
+      console.warn("Using fallback local dialogue due to database configuration or connection state:", e);
+      const fallbacks = DEFAULT_DIALOGUES.filter((d) => d.category === category && d.active);
+      if (fallbacks.length > 0) {
+        const randomIndex = Math.floor(Math.random() * fallbacks.length);
+        return fallbacks[randomIndex];
+      }
       return {
         dialogueId: "fallback",
         category,
@@ -654,29 +708,6 @@ export const dbService = {
         createdAt: new Date().toISOString(),
       };
     }
-
-    const rand = Math.random() * 100;
-    let targetRarity: Dialogue["rarity"] = "common";
-    if (rand < 1) {
-      targetRarity = "legendary";
-    } else if (rand < 11) {
-      targetRarity = "rare";
-    }
-
-    let matched = dialogues.filter((d) => d.rarity === targetRarity);
-    if (matched.length === 0 && targetRarity === "legendary") {
-      targetRarity = "rare";
-      matched = dialogues.filter((d) => d.rarity === "rare");
-    }
-    if (matched.length === 0) {
-      matched = dialogues.filter((d) => d.rarity === "common");
-    }
-    if (matched.length === 0) {
-      matched = dialogues;
-    }
-
-    const randomIndex = Math.floor(Math.random() * matched.length);
-    return matched[randomIndex];
   },
   
   async resetSessionCache(): Promise<void> {
