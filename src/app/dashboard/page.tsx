@@ -12,6 +12,7 @@ import {
   AttendanceHistory,
   calculateAttendancePercentage,
   calculateSafeBunks,
+  calculateRecoveryClasses,
   getSubjectRiskLevel,
 } from "@/lib/db";
 import { useMascot } from "@/components/MascotContext";
@@ -31,6 +32,29 @@ export default function Dashboard() {
   const [overallStatusText, setOverallStatusText] = useState("");
   const [totalSafeBunks, setTotalSafeBunks] = useState(0);
   const [loadingData, setLoadingData] = useState(true);
+
+  const sortedSubjects = useMemo(() => {
+    const req = user?.requiredAttendance || 75;
+    return [...subjects].sort((a, b) => {
+      const pctA = calculateAttendancePercentage(a.attendedClasses, a.totalClasses);
+      const pctB = calculateAttendancePercentage(b.attendedClasses, b.totalClasses);
+      
+      const diffA = req - pctA;
+      const diffB = req - pctB;
+
+      // Critical subjects (below target) first
+      if (diffA > 0 && diffB > 0) {
+        return diffB - diffA; // Sort descending by difference (most critical first)
+      }
+      if (diffA > 0 && diffB <= 0) return -1;
+      if (diffB > 0 && diffA <= 0) return 1;
+
+      // Safe subjects next, sorted by safe bunks ascending (fewest first)
+      const safeA = calculateSafeBunks(a.attendedClasses, a.totalClasses, req);
+      const safeB = calculateSafeBunks(b.attendedClasses, b.totalClasses, req);
+      return safeA - safeB;
+    });
+  }, [subjects, user?.requiredAttendance]);
 
   const loadDashboardData = async (studentId: string) => {
     try {
@@ -341,6 +365,124 @@ export default function Dashboard() {
                         </button>
                       </div>
                     )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ATTENDANCE PLANNER SECTION */}
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center border-b-2 border-black pb-1">
+            <h3 className="font-headline font-black text-xl uppercase tracking-wider text-black">
+              ATTENDANCE PLANNER
+            </h3>
+            <span className="bg-bunk-pink text-white text-[10px] font-bold px-2 py-0.5 uppercase neo-border-sm">
+              Analytics
+            </span>
+          </div>
+
+          {subjects.length === 0 ? (
+            <div className="bg-black text-white p-6 rounded-2xl neo-border text-center neo-shadow">
+              <p className="text-sm font-bold italic text-neutral-400">
+                No subjects registered! Register subjects to start planning.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {sortedSubjects.map((subj) => {
+                const pct = calculateAttendancePercentage(subj.attendedClasses, subj.totalClasses);
+                const req = user?.requiredAttendance || 75;
+                const safeBunks = calculateSafeBunks(subj.attendedClasses, subj.totalClasses, req);
+                const recoveryNeeded = calculateRecoveryClasses(subj.attendedClasses, subj.totalClasses, req);
+                
+                const isCritical = pct < req;
+                const isWarning = !isCritical && safeBunks === 0;
+                
+                // Predicted percentage calculation
+                let predictedPct = pct;
+                if (isCritical && recoveryNeeded > 0) {
+                  predictedPct = calculateAttendancePercentage(
+                    subj.attendedClasses + recoveryNeeded,
+                    subj.totalClasses + recoveryNeeded
+                  );
+                }
+
+                return (
+                  <div
+                    key={subj.subjectId}
+                    className={`bg-black text-white p-5 rounded-2xl neo-border neo-shadow flex flex-col gap-3 border-l-[6px] ${
+                      isCritical
+                        ? "border-l-bunk-danger"
+                        : isWarning
+                        ? "border-l-bunk-warning"
+                        : "border-l-bunk-green"
+                    }`}
+                  >
+                    {/* Header */}
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="truncate">
+                        <h4 className="font-headline font-black text-base text-bunk-yellow uppercase truncate">
+                          {subj.subjectName}
+                        </h4>
+                        <span className="text-[10px] font-extrabold text-neutral-400 uppercase">
+                          CONDUCTED: {subj.totalClasses} | ATTENDED: {subj.attendedClasses}
+                        </span>
+                      </div>
+                      <span className="bg-white text-black font-headline font-black text-xs px-2 py-0.5 neo-border-sm shrink-0">
+                        {pct}%
+                      </span>
+                    </div>
+
+                    {/* Progress Bar Container */}
+                    <div className="relative w-full h-4 bg-neutral-900 rounded-none border border-neutral-800 mt-1">
+                      {/* Current Progress bar */}
+                      <div
+                        className={`h-full transition-all duration-500 ${
+                          isCritical
+                            ? "bg-bunk-danger"
+                            : isWarning
+                            ? "bg-bunk-warning"
+                            : "bg-bunk-green"
+                        }`}
+                        style={{ width: `${Math.min(100, pct)}%` }}
+                      ></div>
+                      
+                      {/* Target Indicator Marker */}
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-bunk-pink z-10"
+                        style={{ left: `${req}%` }}
+                        title={`Target: ${req}%`}
+                      >
+                        {/* Target tooltip flag */}
+                        <span className="absolute -top-4 -left-3 text-[8px] bg-bunk-pink text-white font-extrabold px-1 rounded-sm select-none">
+                          {req}%
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Recommendation Message */}
+                    <div className="text-xs font-semibold leading-snug mt-1 flex-1 flex flex-col justify-center">
+                      {isCritical ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-bunk-danger font-extrabold">
+                            ⚠️ Attend {recoveryNeeded} more consecutive classes to reach {req}%.
+                          </span>
+                          <span className="text-[10px] text-neutral-400 font-bold">
+                            Predicted attendance after recovery: {predictedPct}%
+                          </span>
+                        </div>
+                      ) : safeBunks > 0 ? (
+                        <span className="text-bunk-green font-extrabold">
+                          ✓ You can safely miss next {safeBunks} {safeBunks === 1 ? "class" : "classes"}.
+                        </span>
+                      ) : (
+                        <span className="text-bunk-warning font-extrabold">
+                          Maintain attendance to stay at target ({req}%).
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
