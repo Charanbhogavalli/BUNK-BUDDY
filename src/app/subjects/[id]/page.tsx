@@ -12,6 +12,7 @@ import {
   calculateSafeBunks,
   calculateRecoveryClasses,
   getSubjectRiskLevel,
+  SubjectRiskLevel,
 } from "@/lib/db";
 import { useMascot } from "@/components/MascotContext";
 import { ArrowLeft, Calendar as CalIcon, Calculator, ChevronLeft, ChevronRight, X, Trash2, CalendarCheck } from "lucide-react";
@@ -204,41 +205,22 @@ export default function SubjectDetailPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <AppLayout>
-        <div className="text-center font-headline font-black text-xl py-20">
-          LOADING DETAILS...
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (error || !subject || !user) {
-    return (
-      <AppLayout>
-        <div className="bg-bunk-danger text-black neo-border p-6 rounded-2xl neo-shadow text-center">
-          <p className="font-headline font-black text-lg">⚠️ ERROR</p>
-          <p className="text-sm font-bold mt-2">{error || "Something failed."}</p>
-          <Link href="/subjects" className="neo-btn bg-white text-black text-xs font-bold px-4 py-2 mt-4 inline-block rounded-lg">
-            Back to Subjects
-          </Link>
-        </div>
-      </AppLayout>
-    );
-  }
-
   const { pct, missed, safeCount, recoveryCount, risk } = useMemo(() => {
+    if (!subject || !user) {
+      return { pct: 0, missed: 0, safeCount: 0, recoveryCount: 0, risk: "Safe" as SubjectRiskLevel };
+    }
     const p = calculateAttendancePercentage(subject.attendedClasses, subject.totalClasses);
     const m = subject.totalClasses - subject.attendedClasses;
     const s = calculateSafeBunks(subject.attendedClasses, subject.totalClasses, user.requiredAttendance);
     const r = calculateRecoveryClasses(subject.attendedClasses, subject.totalClasses, user.requiredAttendance);
     const k = getSubjectRiskLevel(p);
     return { pct: p, missed: m, safeCount: s, recoveryCount: r, risk: k };
-  }, [subject, user.requiredAttendance]);
+  }, [subject, user?.requiredAttendance]);
 
   // Generate Calendar Grid
   const calendarCells = useMemo(() => {
+    if (!subject || !user) return [];
+    
     const daysInMonth = getDaysInMonth(currentYear, currentMonth);
     const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
     
@@ -280,7 +262,31 @@ export default function SubjectDetailPage() {
       );
     }
     return cells;
-  }, [currentYear, currentMonth, history, handleDayClick]);
+  }, [currentYear, currentMonth, history, handleDayClick, subject, user]);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="text-center font-headline font-black text-xl py-20">
+          LOADING DETAILS...
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (error || !subject || !user) {
+    return (
+      <AppLayout>
+        <div className="bg-bunk-danger text-black neo-border p-6 rounded-2xl neo-shadow text-center">
+          <p className="font-headline font-black text-lg">⚠️ ERROR</p>
+          <p className="text-sm font-bold mt-2">{error || "Something failed."}</p>
+          <Link href="/subjects" className="neo-btn bg-white text-black text-xs font-bold px-4 py-2 mt-4 inline-block rounded-lg">
+            Back to Subjects
+          </Link>
+        </div>
+      </AppLayout>
+    );
+  }
 
   // Attendance Timeline sorted descending (most recent logs first)
   const timelineLogs = [...history].sort((a, b) => b.date.localeCompare(a.date));
